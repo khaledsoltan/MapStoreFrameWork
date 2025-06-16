@@ -1,0 +1,8 @@
+{
+    "routing": {
+        "title": "Routing",
+        "description": "This is a routing panel that allows you to view routing information and trigger alerts.",
+        "showAlert": "Show Alert",
+        "help": "Click to open the routing panel"
+    }
+}

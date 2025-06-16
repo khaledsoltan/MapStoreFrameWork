@@ -1,0 +1,72 @@
+//
+// Copyright 2021, GeoSolutions Sas.
+// All rights reserved.
+//
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
+//
+
+// **************
+// Theme
+// **************
+
+// #ms-components-theme(@theme-vars) {}
+
+// **************
+// Layout
+// **************
+.mapToolbar {
+   // box-shadow: -1px 1px 5px 1px rgba(94, 94, 94, 1);
+}
+
+.mapToolbar {
+    position: absolute;
+    bottom: 15px;
+    right: 0;
+    right: auto !important;
+    left: 40px;
+    z-index: 1000;
+    margin-bottom: 50px;
+    margin-right: 5px;
+    display: flex;
+    flex-direction: row;
+    border-radius: 1000px;
+    background: rgb(47,90,139);
+    background: linear-gradient(90deg,#5da1e1,#283571);
+    button {
+        background-color: transparent !important;
+        border-color: transparent !important;
+    }
+    .glyphicon {
+        font-size: 18px !important;
+
+    }
+ }
+
+.toolbarexpand-enter {
+    opacity: 0.01;
+}
+
+.toolbarexpand-enter.toolbarexpand-enter-active {
+    opacity: 1;
+    transition: opacity 500ms ease-in;
+}
+
+.toolbarexpand-leave {
+    opacity: 1;
+}
+
+.toolbarexpand-leave.toolbarexpand-leave-active {
+    opacity: 0.01;
+    transition: opacity 300ms ease-in;
+}
+
+#navigationBar .toolbar-panel {
+    bottom: 100px !important;
+}
+
+#identifyBar .mapToolbar {
+    top: auto !important;
+    bottom: 5px;
+    right: 212px !important;
+}

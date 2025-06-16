@@ -1,0 +1,54 @@
+@import '../../themes/default/ms-variables.less';
+
+#mapstore-sidebar-menu-container {
+    z-index: 1030;
+    position: absolute;
+    background: inherit;
+    width: @square-btn-size;
+    background: rgb(47,90,139);
+    background: linear-gradient(180deg,#5da1e1,#283571);
+    top: 0; 
+    bottom: 0; 
+    right: 5px;
+    max-height: calc(70%) !important;
+    border-radius: 1000px;
+    margin-block: auto; 
+    height: fit-content;
+    #mapstore-sidebar-menu {
+        position: absolute;
+        top: 5;
+        right: 5;
+        height: auto;
+        z-index: 10;
+
+        & > .btn-tray, & > .btn,
+        & > .btn-group .btn {
+            border-bottom: 0;
+            height: @square-btn-size;
+            width: @square-btn-size;
+
+            span:not(.glyphicon) {
+                display: none;
+            }
+        }
+
+        .btn-tray {
+            background: transparent !important;
+        }
+        .glyphicon {
+            color: #fff;
+            font-size: 16px;
+        }
+        .snapshot-panel {
+            position: absolute;
+            right: @square-btn-size;
+            top: 60px;
+            background: #ffffffab;
+        }
+    }
+}
+
+#mapstore-sidebar-menu-container.fullHeightSideBar{
+    position: relative;
+    max-height: 100% !important;
+}
