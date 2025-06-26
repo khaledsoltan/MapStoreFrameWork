@@ -30,6 +30,9 @@ class CRSSelector extends React.Component {
     static defaultProps = {
         id: "mapstore-crsselector",
         availableCRS: getAvailableCRS(),
+        filterAllowedCRS: [],
+        projectionDefs: [],
+        additionalCRS: {},
         crs: null,
         onCRSChange: function() {},
         enabled: false,
@@ -41,7 +44,7 @@ class CRSSelector extends React.Component {
         var label;
         var list = [];
         let availableCRS = {};
-        if (Object.keys(this.props.availableCRS).length) {
+        if (this.props.availableCRS && Object.keys(this.props.availableCRS).length) {
             availableCRS = filterCRSList(this.props.availableCRS, this.props.filterAllowedCRS, this.props.additionalCRS, this.props.projectionDefs );
         }
         for (let crs in availableCRS) {

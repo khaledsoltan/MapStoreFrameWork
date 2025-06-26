@@ -17,6 +17,15 @@ import isEmpty from "lodash/isEmpty";
 
 import {setStore as stateSetStore, getState} from "./StateUtils";
 
+// Lazy import to avoid circular dependency
+let KeycloakSecurityUtils = null;
+const getKeycloakSecurityUtils = () => {
+    if (!KeycloakSecurityUtils) {
+        KeycloakSecurityUtils = require('./KeycloakSecurityUtils').KeycloakSecurityUtils;
+    }
+    return KeycloakSecurityUtils;
+};
+
 export const USER_GROUP_ALL = 'everyone';
 
 export function getCredentials(id) {
@@ -59,6 +68,14 @@ export function getBasicAuthHeader() {
  * Returns the current user access token value.
  */
 export function getToken() {
+    try {
+        const keycloakUtils = getKeycloakSecurityUtils();
+        if (keycloakUtils && keycloakUtils.isKeycloakUser()) {
+            return keycloakUtils.getToken();
+        }
+    } catch (error) {
+        // Fallback to default if Keycloak utils not available
+    }
     return getSecurityInfo()?.token;
 }
 
@@ -67,6 +84,14 @@ export function getToken() {
  * The refresh token is used to get a new access token.
  */
 export function getRefreshToken() {
+    try {
+        const keycloakUtils = getKeycloakSecurityUtils();
+        if (keycloakUtils && keycloakUtils.isKeycloakUser()) {
+            return keycloakUtils.getRefreshToken();
+        }
+    } catch (error) {
+        // Fallback to default if Keycloak utils not available
+    }
     return getSecurityInfo()?.refresh_token;
 }
 

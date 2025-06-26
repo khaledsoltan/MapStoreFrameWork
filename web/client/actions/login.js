@@ -9,7 +9,7 @@
 import ConfigUtils from '../utils/ConfigUtils';
 
 import { setControlProperty } from './controls';
-import { logoutWithReload, resetError } from './security';
+import { logoutWithReload, resetError, completeLogout } from './security';
 import AuthenticationAPI from '../api/GeoStoreDAO';
 
 /**
@@ -80,16 +80,21 @@ export function onShowLogin(providers = [{type: "basic", provider: "geostore"}])
 }
 
 /**
- * Execute the logout operations
- * @returns {function} calls AuthenticationAPI logout and then dispatch the logout actions.
+ * Execute the comprehensive logout operations
+ * @returns {function} calls the enhanced completeLogout function that handles both Keycloak and backend logout with comprehensive token cleanup
  * @memberof actions.login
  */
 export function onLogout() {
     return (dispatch) => {
-
-        AuthenticationAPI.logout()
-            .then(() => dispatch(logoutWithReload()))
-            .catch(() => dispatch(logoutWithReload()));
-
+        // Use the enhanced completeLogout function that handles:
+        // 1. Backend API logout
+        // 2. Keycloak session cleanup
+        // 3. Comprehensive token and cache cleanup (including keycloak_access_token, keycloak_refresh_token, etc.)
+        // 4. Cookie cleanup
+        // 5. IndexedDB cleanup
+        // 6. Redux state cleanup
+        // 7. Keycloak single logout redirect
+        console.log('🚪 Initiating comprehensive logout...');
+        dispatch(completeLogout());
     };
 }

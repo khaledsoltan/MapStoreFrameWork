@@ -44,7 +44,7 @@ describe('Icons openlayers styles', () => {
         expect(iconText).toExist();
         expect(iconText.getFill().getColor()).toEqual("#FFFFFF");
         expect(iconText.getFont()).toEqual("14px FontAwesome");
-
+ 
     });
     it('test extra getIcon with highlight', () => {
         const getIcon = Icons.extra.getIcon;

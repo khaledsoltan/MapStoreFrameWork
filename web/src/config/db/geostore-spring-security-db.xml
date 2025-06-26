@@ -44,6 +44,8 @@
     <!-- Inject into the Authentication Manager the GeoStore Auth Provider -->
     <security:authentication-manager>
         <security:authentication-provider ref='geoStoreUserServiceAuthenticationProvider' />
+        <security:authentication-provider ref='keycloakAuthenticationProvider' />
+        <security:authentication-provider ref='keycloakPreAuthenticationProvider' />
     </security:authentication-manager>
 
     <bean id="preauthenticatedAuthenticationProvider" class="it.geosolutions.geostore.services.rest.security.PreAuthenticatedAuthenticationProvider">
@@ -60,8 +62,8 @@
 
     <!-- END OAuth2 beans-->
 
-    <!--  security itegration inclusions  -->
-    <import resource="classpath*:security-integration-${security.integration:default}.xml"/>
+    <!--  security integration inclusions  -->
+    <import resource="classpath*:security-integration-${security.integration:keycloak}.xml"/>
 
 
 </beans>

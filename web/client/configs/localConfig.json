@@ -20,10 +20,14 @@
       "https://maps2.geosolutionsgroup.com/geoserver/",
       "https://maps3.geosolutionsgroup.com/geoserver/",
       "https://maps4.geosolutionsgroup.com/geoserver/",
-      "https://maps5.geosolutionsgroup.com/geoserver/"
+      "https://maps5.geosolutionsgroup.com/geoserver/",
+      "https://gisidgw.geosystems-me.com:5443",
+      "https://gisidgw.geosystems-me.com:5443/realms/GISID/protocol/openid-connect",
+      "http://localhost:9191",
+      "http://localhost:9191/geostore"
     ]
   },
-  "geoStoreUrl": "rest/geostore/",
+  "geoStoreUrl": "http://localhost:9191/geostore/rest/",
   "mailingList": "https://groups.google.com/forum/#!forum/mapstore-users",
   "printUrl": "pdf/info.json",
   "bingApiKey": "AhuXBu7ipR1gNbBfXhtUAyCZ6rkC5PkWpxs2MnMRZ1ZupxQfivjLCch22ozKSCAn",
@@ -57,6 +61,45 @@
     {
       "urlPattern": ".*rest/config.*",
       "method": "bearer"
+    },
+    {
+      "urlPattern": "http://localhost:9191/.*",
+      "method": "bearer"
+    }
+  ],
+  "authenticationProviders": [
+    {
+      "type": "openID",
+      "provider": "keycloak",
+      "title": "Login with Keycloak",
+      "showInLoginForm": true,
+      "config": {
+        "realm": "GISID",
+        "auth-server-url": "https://gisidgw.geosystems-me.com:5443/",
+        "ssl-required": "external",
+        "resource": "mapstore-client",
+        "public-client": true,
+        "confidential-port": 0,
+        "enable-cors": true
+      },
+      "sso": {
+        "type": "keycloak"
+      },
+      "advanced": {
+        "logoutUrl": "https://gisidgw.geosystems-me.com:5443/realms/GISID/protocol/openid-connect/logout",
+        "enableSingleLogout": false,
+        "backendLogoutUrl": "http://localhost:9191/geostore/rest/users/user/logout",
+        "tokenRefreshBuffer": 300,
+        "automaticSilentRefresh": true,
+        "checkLoginIframe": true,
+        "silentCheckSsoRedirectUri": "http://localhost:8080/silent-check-sso.html"
+      }
+    },
+    {
+      "type": "basic", 
+      "provider": "geostore",
+      "title": "Standard Login",
+      "showInLoginForm": false
     }
   ],
   "monitorState": [
@@ -77,6 +120,17 @@
   ],
   "userSessions": {
     "enabled": true
+  },
+  "tokenRefreshInterval": 120000,
+  "keycloakConfig": {
+    "enableDebugMode": false,
+    "enablePeriodicUserInfoRefresh": true,
+    "userInfoRefreshInterval": 600000,
+    "enableTokenValidation": true,
+    "enableSessionMonitoring": true,
+    "sessionCheckInterval": 300000,
+    "enableRoleSync": true,
+    "roleSyncInterval": 1800000
   },
   "projectionDefs": [],
   "initialState": {

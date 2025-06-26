@@ -483,13 +483,20 @@ export const getAvailableCRS = function() {
     return crsList;
 };
 export const filterCRSList = (availableCRS, filterAllowedCRS, additionalCRS, projDefs ) => {
-    let crs = Object.keys(availableCRS).reduce( (p, c) => {
-        return assign({}, filterAllowedCRS.indexOf(c) === -1 ? p : {...p, [c]: availableCRS[c]});
+    // Ensure parameters have default values to prevent errors
+    const safeFilterAllowedCRS = filterAllowedCRS || [];
+    const safeAdditionalCRS = additionalCRS || {};
+    const safeProjDefs = projDefs || [];
+    
+    let crs = Object.keys(availableCRS || {}).reduce( (p, c) => {
+        return assign({}, safeFilterAllowedCRS.indexOf(c) === -1 ? p : {...p, [c]: availableCRS[c]});
     }, {});
-    const codeProjections = projDefs.map(p => p.code);
-    let newAdditionalCRS = Object.keys(additionalCRS).reduce( (p, c) => {
-        return assign({}, codeProjections.indexOf(c) === -1 ? p : {...p, [c]: additionalCRS[c]});
+    
+    const codeProjections = safeProjDefs.map(p => p && p.code ? p.code : '');
+    let newAdditionalCRS = Object.keys(safeAdditionalCRS).reduce( (p, c) => {
+        return assign({}, codeProjections.indexOf(c) === -1 ? p : {...p, [c]: safeAdditionalCRS[c]});
     }, {});
+    
     return assign({}, crs, newAdditionalCRS);
 };
 export const calculateAzimuth = function(p1, p2, pj) {

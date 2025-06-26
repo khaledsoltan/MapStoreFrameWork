@@ -19,7 +19,7 @@ const ImportSelectCRS = ({
     let list = [];
     const usableCRS = getAvailableCRS();
     let availableCRS = {};
-    if (Object.keys(usableCRS).length) {
+    if (usableCRS && Object.keys(usableCRS).length) {
         availableCRS = filterCRSList(usableCRS, filterAllowedCRS, additionalCRS, getConfigProp('projectionDefs') || [] );
     }
     for (let item in availableCRS) {

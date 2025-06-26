@@ -21,6 +21,8 @@ import { themeLoaded } from '../actions/theme';
 import { updateMapLayoutEpic, updateActiveDockEpic } from '../epics/maplayout';
 import { setSupportedLocales } from '../epics/localconfig';
 import { readQueryParamsOnMapEpic } from '../epics/queryparams';
+import { keycloakInitEpic, keycloakLoginEventEpic, mapstoreKeycloakLoginEpic, keycloakAppStartEpic, keycloakSessionRefreshEpic } from '../epics/keycloak';
+import { keycloakRefreshTokenEpic, keycloakSessionVerificationEpic, keycloakPeriodicRefreshEpic, keycloakSessionExpirationEpic, keycloakUserInfoRefreshEpic } from '../epics/keycloakSecurity';
 
 import maptype from '../reducers/maptype';
 import maplayout from '../reducers/maplayout';
@@ -94,6 +96,16 @@ export default (config = {}, pluginsDef, overrideConfig = cfg => cfg) => {
                 updateActiveDockEpic,
                 setSupportedLocales,
                 readQueryParamsOnMapEpic,
+                keycloakInitEpic,
+                keycloakLoginEventEpic,
+                mapstoreKeycloakLoginEpic,
+                keycloakAppStartEpic,
+                keycloakSessionRefreshEpic,
+                keycloakRefreshTokenEpic,
+                keycloakSessionVerificationEpic,
+                keycloakPeriodicRefreshEpic,
+                keycloakSessionExpirationEpic,
+                keycloakUserInfoRefreshEpic,
                 ...configAppEpics
             }),
 

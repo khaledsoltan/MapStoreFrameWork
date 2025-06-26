@@ -10,7 +10,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import L from 'leaflet';
 import uuidv1 from 'uuid/v1';
-import { addLayer, updateNode } from '../actions/layers';
+import { addLayer, updateNode, removeLayer } from '../actions/layers';
+import proj4 from 'proj4';
 
 const CONTROL_NAME = "playground_dialog";
 import { connect } from 'react-redux';
@@ -77,27 +78,23 @@ function useFeatureCenter() {
 
 // Map POI categories to OSM amenity tags
 const POI_CATEGORIES = [
-    { key: 'hospital', label: 'Hospitals', icon: 'plus-sign', amenity: 'hospital' },
-    { key: 'hotel', label: 'Hotels', icon: 'home', amenity: 'hotel' },
-    { key: 'police station', label: 'Police Stations', icon: 'tower', amenity: 'police' },
-    { key: 'restaurant', label: 'Restaurants', icon: 'cutlery', amenity: 'restaurant' },
-    { key: 'school', label: 'Schools', icon: 'education', amenity: 'school' }
+    { key: 'hospital', label: 'Hospitals', icon: '/utils/assets/hospitals.png', amenity: 'hospital' },
+    { key: 'hotel', label: 'Hotels', icon: '/utils/assets/hotels.png', amenity: 'hotel' },
+    { key: 'policestation', label: 'Police Stations', icon: '/utils/assets/policestations.png', amenity: 'police' },
+    { key: 'restaurant', label: 'Restaurants', icon: '/utils/assets/restaurants.png', amenity: 'restaurant' },
+    { key: 'school', label: 'Schools', icon: '/utils/assets/schools.png', amenity: 'school' },
 ];
 
-const categoryIcons = {
-    hospital: L.icon({ iconUrl: 'hospital.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
-    hotel: L.icon({ iconUrl: 'hotel.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
-    'police station': L.icon({ iconUrl: 'police.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
-    restaurant: L.icon({ iconUrl: 'restaurant.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
-    school: L.icon({ iconUrl: 'school.png', iconSize: [25, 41], iconAnchor: [12, 41] })
-};
 
-const iconMap = {
-    'hospital': 'plus-sign.png',
-    'hotel': 'home.png',
-    'police station': 'tower.png',
-    'restaurant': 'cutlery.png',
-    'school': 'education.png'
+
+
+
+const iconUrlMap = {
+    hospital: '/utils/assets/hospitals.png',
+    hotel: '/utils/assets/hotels.png',
+    policestation: '/utils/assets/policestations.png',
+    restaurant: '/utils/assets/restaurants.png',
+    school: '/utils/assets/schools.png',
 };
 
 const Playground = ({ text, dispatch, tempFeatures, features }) => {
@@ -114,47 +111,119 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
     const [range, setRange] = useState(12);
     const [unit, setUnit] = useState('km');
     const [loading, setLoading] = useState(false);
-    const [drawnPoint, setDrawnPoint] = useState(null); // store last drawn point
+    const [drawnCenter, setDrawnCenter] = useState(null); // store last drawn circle center
 
-    // Watch for point draw and update drawnPoint
+    // When user clicks to start drawing a new circle
+    const handleDrawClick = (method) => {
+        setDrawnCenter(null); // reset on new draw
+        dispatch(changeDrawingStatus('start', method, 'playground', [], { stopAfterDrawing: true }));
+    };
+
+    // When a circle is drawn, update drawnCenter and slider
     useEffect(() => {
-        if (tempFeatures && tempFeatures.length === 1 && tempFeatures[0].geometry.type === 'Point') {
-            setDrawnPoint(tempFeatures[0].geometry.coordinates);
+        if (features && features.length > 0) {
+            const f = features[0];
+            if (f.geometry && f.geometry.type === 'Circle' && Array.isArray(f.geometry.center)) {
+                setDrawnCenter(f.geometry.center);
+                if (typeof f.geometry.radius === 'number') {
+                    const radiusKm = Math.max(1, Math.min(50, Math.round(f.geometry.radius / 1000)));
+                    setUnit('km');
+                    setRange(radiusKm);
+                }
+            }
         }
-    }, [tempFeatures]);
+    }, [features]);
 
-    // Update circle on map when slider or unit changes and a point is present
-    useEffect(() => {
-        if (drawnPoint) {
-            const radius = range * (unit === 'km' ? 1000 : 1); // meters
-            const circleFeature = [{
+    // Slider onChange handler uses drawnCenter
+    const handleSliderChange = (e) => {
+        const value = e.target.value; // This is a string
+        const numericValue = Number(value);       
+   
+
+        setRange(numericValue);
+        setUnit(unit);
+
+        setUnit(e.target.value);
+        // When unit changes, update the circle on the map
+        const newUnit = e.target.value;
+        let radius = newUnit === 'km' ? range * 1000 : range;
+        let center = drawnCenter;
+        if (!center) {
+            if (features && features.length > 0) {
+                const f = features[0];
+                if (f.geometry && f.geometry.type === 'Polygon' && f.geometry.coordinates) {
+                    center = getPolygonCentroid(f.geometry);
+                } else if (f.geometry && f.geometry.type === 'Circle' && Array.isArray(f.geometry.center)) {
+                    center = f.geometry.center;
+                } else if (f.geometry && f.geometry.type === 'Point' && Array.isArray(f.geometry.coordinates)) {
+                    center = f.geometry.coordinates;
+                } else if (Array.isArray(f.center)) {
+                    center = f.center;
+                } else if (f.properties && Array.isArray(f.properties.center)) {
+                    center = f.properties.center;
+                }
+            }
+        }
+        if (center) {
+            const circlePolygon = createCirclePolygon(center, radius);
+            const dynamicCircle = [{
                 type: 'Feature',
-                geometry: {
-                    type: 'Circle',
-                    center: drawnPoint,
-                    radius: radius
-                },
-                properties: {}
+                geometry: circlePolygon,
+                properties: { label: 'Dynamic Circle', center, radius, unit: newUnit }
             }];
             dispatch(changeDrawingStatus(
                 'replace',
-                'Circle',
+                'Polygon',
                 'playground',
-                circleFeature,
+                dynamicCircle,
                 { stopAfterDrawing: false }
             ));
         }
-    }, [drawnPoint, range, unit, dispatch]);
-
-    // When user draws a new point or circle, update drawnPoint or clear it
-    const handleDrawClick = (method) => {
-        setDrawnPoint(null); // reset on new draw
-        dispatch(changeDrawingStatus('start', method, 'playground', [], { stopAfterDrawing: true }));
     };
 
     // Debug logs
     console.log('Drawn tempFeatures:', tempFeatures);
     console.log('Drawn features:', features);
+    useEffect(() => {
+        if (features && features[0]) {
+            // Print direct radius property
+            if (typeof features[0].radius !== 'undefined') {
+                console.log('features[0].radius:', features[0].radius);
+                const radiusMetersInt = Math.round(features[0].radius);
+                const radiusKilometersInt = Math.round(features[0].radius / 1000);
+                console.log("Radius:", radiusMetersInt, "meters");
+                console.log("Radius:", radiusKilometersInt, "kilometers");
+                if (unit !== 'km' || range !== radiusKilometersInt) {
+                    setUnit('km');
+                    setRange(radiusKilometersInt);
+                }
+            }
+            // Print geometry.radius if present
+            if (features[0].geometry && typeof features[0].geometry.radius !== 'undefined') {
+                console.log('features[0].geometry.radius:', features[0].geometry.radius);
+                const radiusMetersInt = Math.round(features[0].geometry.radius);
+                const radiusKilometersInt = Math.round(features[0].geometry.radius / 1000);
+                console.log("Radius:", radiusMetersInt, "meters");
+                console.log("Radius:", radiusKilometersInt, "kilometers");
+                if (unit !== 'km' || range !== radiusKilometersInt) {
+                    setUnit('km');
+                    setRange(radiusKilometersInt);
+                }
+            }
+            // Print properties.radius if present
+            if (features[0].properties && typeof features[0].properties.radius !== 'undefined') {
+                console.log('features[0].properties.radius:', features[0].properties.radius);
+                const radiusMetersInt = Math.round(features[0].properties.radius);
+                const radiusKilometersInt = Math.round(features[0].properties.radius / 1000);
+                console.log("Radius:", radiusMetersInt, "meters");
+                console.log("Radius:", radiusKilometersInt, "kilometers");
+                if (unit !== 'km' || range !== radiusKilometersInt) {
+                    setUnit('km');
+                    setRange(radiusKilometersInt);
+                }
+            }
+        }
+    }, [features]);
 
     const handleNearbySearch = async () => {
         setLoading(true);
@@ -180,84 +249,81 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
             alert('Invalid center or radius.');
             return;
         }
-        const [lng, lat] = center;
+        // HERE API integration
+        const apiKey = "Z8GuSnyImHGYh-ZdUOMaLKiwzeFosqQFfG97fkx9Kpc";
+        // Use selected category as query
         const selectedCat = POI_CATEGORIES.find(cat => cat.key === selectedCategory);
-        const amenity = selectedCat ? selectedCat.amenity : 'restaurant';
-        const intRadius = Math.round(radius);
-        const query = `
-            [out:json];
-            node(around:${intRadius},${lat},${lng})["amenity"="${amenity}"];
-            out;
-        `;
+        const queryText = selectedCat ? selectedCat.label : 'Restaurant';
+        // Helper to check if coordinates are in EPSG:4326 or EPSG:3857
+        function toLatLon(center) {
+            let [lng, lat] = center;
+            // If values are out of lat/lon range, assume EPSG:3857 and convert
+            if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                [lng, lat] = proj4('EPSG:3857', 'EPSG:4326', [lng, lat]);
+            }
+            return [lat, lng];
+        }
+        const [lat, lng] = toLatLon(center);
+        const intRadius = Math.max(1, Math.round(radius));
+        const url = `https://discover.search.hereapi.com/v1/discover?in=circle:${lat},${lng};r=${intRadius}&q=${encodeURIComponent(queryText)}&limit=100&apiKey=${apiKey}`;
         try {
-            const response = await fetch("https://overpass-api.de/api/interpreter", {
-                method: "POST",
-                body: query,
-                headers: {
-                    "Content-Type": "text/plain"
-                }
-            });
+            const response = await fetch(url);
             if (!response.ok) {
                 setLoading(false);
                 alert('Network error: ' + response.status + ' ' + response.statusText);
                 return;
             }
             const data = await response.json();
-            if (!data.elements) {
+            if (!data.items || !Array.isArray(data.items)) {
                 setLoading(false);
-                alert('No data returned from Overpass API.');
+                alert('No data returned from HERE API.');
                 return;
             }
-            // Convert to GeoJSON features and add category
-            const poiFeatures = data.elements
-                .filter(el => el.type === "node" && el.lat && el.lon)
-                .map(el => ({
-                    type: "Feature",
-                    geometry: {
-                        type: "Point",
-                        coordinates: [el.lon, el.lat]
-                    },
-                    properties: {
-                        title: el.tags && (el.tags.name || amenity),
-                        address: el.tags && (el.tags["addr:full"] || el.tags["addr:street"] || ""),
-                        category: amenity,
-                        annotationType: "Point",
-                        id: uuidv1(),
-                        title: "Sample Hospital",
-                        category: "hospital"
-                    },
-                    style: {
-                        iconGlyph: "glass",
-                    }
-                }));
-
-                dispatch(addLayer({
-                    id: "annotations:playground-samples",
-                    title: "Sample Markers",
-                    type: "vector",
-                    features: poiFeatures,
-                    style: {},
-                    visibility: true,
-                    rowViewer: "annotations"
-                }));
-                console.log("poiFeatures", poiFeatures);
-              
+            // Convert HERE items to GeoJSON features
+            const poiFeatures = data.items.map(item => ({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [item.position.lng, item.position.lat]
+                },
+                properties: {
+                    title: item.title,
+                    address: item.address && item.address.label,
+                    category: selectedCat ? selectedCat.key : selectedCategory,
+                    annotationType: "Point",
+                    id: uuidv1()
+                },
+                style: {
+                    iconUrl: selectedCat ? iconUrlMap[selectedCat.key] : "/utils/assets/hospitals.png"
+                }
+            }));
+            dispatch(addLayer({
+                id: selectedCat ? `annotations:${selectedCat.key}-items` : "annotations:nearby-items",
+                title: selectedCat ? selectedCat.label : "Nearby Items",
+                type: "vector",
+                features: poiFeatures,
+                style: {},
+                visibility: true,
+                rowViewer: "annotations"
+            }));
+            console.log("poiFeatures", poiFeatures);
             if (!poiFeatures.length) {
                 setLoading(false);
                 alert('No POIs found for the selected category and area.');
                 return;
             }
-            // Dispatch static points to DrawSupport
-
         } catch (e) {
             setLoading(false);
-            alert('Error fetching POIs from Overpass API: ' + (e.message || e));
+            alert('Error fetching POIs from HERE API: ' + (e.message || e));
             return;
         }
         setLoading(false);
     };
 
- 
+   
+
+   
+
 
     return (
         <Dialog floating title="Nearby" className="nearby-dialog" style={{marginLeft: 650}}>
@@ -308,44 +374,7 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                             min={1}
                             max={50}
                             value={range}
-                            onChange={e => {
-                                setRange(Number(e.target.value));
-                                let radius = unit === 'km'
-                                    ? Number(e.target.value) * 1000
-                                    : Number(e.target.value);
-
-                                let center = null;
-                                let sourceFeatures = features && features.length > 0 ? features : tempFeatures;
-                                if (sourceFeatures && sourceFeatures.length > 0) {
-                                    const f = sourceFeatures[0];
-                                    if (f.geometry && f.geometry.type === 'Point' && Array.isArray(f.geometry.coordinates)) {
-                                        center = f.geometry.coordinates;
-                                    } else if (f.geometry && f.geometry.type === 'Circle' && Array.isArray(f.geometry.center)) {
-                                        center = f.geometry.center;
-                                    } else if (Array.isArray(f.center)) {
-                                        center = f.center;
-                                    } else if (f.properties && Array.isArray(f.properties.center)) {
-                                        center = f.properties.center;
-                                    }
-                                }
-                                if (!center) {
-                                    alert('No valid feature found. Please draw a point or circle on the map.');
-                                    return;
-                                }
-                                const circlePolygon = createCirclePolygon(center, radius);
-                                const dynamicCircle = [{
-                                    type: 'Feature',
-                                    geometry: circlePolygon,
-                                    properties: { label: 'Dynamic Circle', center, radius, unit }
-                                }];
-                                dispatch(changeDrawingStatus(
-                                    'replace',
-                                    'Polygon',
-                                    'playground',
-                                    dynamicCircle,
-                                    { stopAfterDrawing: false }
-                                ));
-                            }}
+                            onChange={handleSliderChange}
                             style={{ width: '100%' }}
                         />
                        
@@ -361,7 +390,44 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                                 textAlign: 'center',
                                 marginLeft: 0
                             }}>{range} {unit.toUpperCase()}</div>
-                            <select value={unit} onChange={e => setUnit(e.target.value)} style={{ borderRadius: 6, border: '1px solid #337ab7', color: '#337ab7', fontWeight: 'bold', padding: '2px 6px' }}>
+                            <select value={unit} onChange={e => {
+                                setUnit(e.target.value);
+                                // When unit changes, update the circle on the map
+                                const newUnit = e.target.value;
+                                let radius = newUnit === 'km' ? range * 1000 : range;
+                                let center = drawnCenter;
+                                if (!center) {
+                                    if (features && features.length > 0) {
+                                        const f = features[0];
+                                        if (f.geometry && f.geometry.type === 'Polygon' && f.geometry.coordinates) {
+                                            center = getPolygonCentroid(f.geometry);
+                                        } else if (f.geometry && f.geometry.type === 'Circle' && Array.isArray(f.geometry.center)) {
+                                            center = f.geometry.center;
+                                        } else if (f.geometry && f.geometry.type === 'Point' && Array.isArray(f.geometry.coordinates)) {
+                                            center = f.geometry.coordinates;
+                                        } else if (Array.isArray(f.center)) {
+                                            center = f.center;
+                                        } else if (f.properties && Array.isArray(f.properties.center)) {
+                                            center = f.properties.center;
+                                        }
+                                    }
+                                }
+                                if (center) {
+                                    const circlePolygon = createCirclePolygon(center, radius);
+                                    const dynamicCircle = [{
+                                        type: 'Feature',
+                                        geometry: circlePolygon,
+                                        properties: { label: 'Dynamic Circle', center, radius, unit: newUnit }
+                                    }];
+                                    dispatch(changeDrawingStatus(
+                                        'replace',
+                                        'Polygon',
+                                        'playground',
+                                        dynamicCircle,
+                                        { stopAfterDrawing: false }
+                                    ));
+                                }
+                            }} style={{ borderRadius: 6, border: '1px solid #337ab7', color: '#337ab7', fontWeight: 'bold', padding: '2px 6px' }}>
                                 <option value="km">KM</option>
                                 <option value="m">M</option>
                             </select>
@@ -380,7 +446,7 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                         </button>
                     </div>
                 </div>
-                <button
+                {/* <button
                     style={{
                         background: '#337ab7',
                         color: '#fff',
@@ -430,7 +496,7 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                             }
                         ];
                         dispatch(addLayer({
-                            id: "annotations:playground-samples",
+                            id: "annotations:nearyby-items",
                             title: "Sample Markers",
                             type: "vector",
                             features: samplePOIs,
@@ -441,7 +507,7 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                     }}
                 >
                     Add Sample Points
-                </button>
+                </button> */}
                 {DrawSupport && <DrawSupport drawOwner="playground" />}
                 <button
                     style={{ background: '#337ab7', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 0', fontWeight: 'bold', fontSize: 16, cursor: loading ? 'wait' : 'pointer', boxShadow: '0 1px 4px #337ab733', width: '100%', marginTop: 8 }}
@@ -455,6 +521,8 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                     style={{ background: '#fff', color: '#337ab7', border: '1.5px solid #337ab7', borderRadius: 4, padding: '10px 0', fontWeight: 'bold', fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 4px #337ab733', width: '100%' }}
                     onClick={() => {
                         dispatch(changeDrawingStatus('clean', '', 'playground', [], {}));
+                        const selectedCat = POI_CATEGORIES.find(cat => cat.key === selectedCategory);
+                        dispatch(removeLayer(selectedCat ? `annotations:${selectedCat.key}-items` : 'annotations:nearby-items'));
                     }}
                 >
                     Reset
@@ -487,6 +555,9 @@ const Playground = ({ text, dispatch, tempFeatures, features }) => {
                         {JSON.stringify(features, null, 2)}
                     </pre>
                 </div> */}
+                <button onClick={() => { setRange(25); setUnit('km'); }}>
+                    Set Slider to 25 KM
+                </button>
             </div>
         </Dialog>
     );

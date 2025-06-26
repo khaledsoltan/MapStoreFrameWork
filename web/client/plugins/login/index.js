@@ -6,7 +6,7 @@
 * LICENSE file in the root directory of this source tree.
 */
 import React from 'react';
-import { changePassword, login, loginFail, logout } from '../../actions/security';
+import { changePassword, login, loginFail, logout, completeLogout } from '../../actions/security';
 import {onShowLogin, closeLogin, onLogout, openIDLogin} from '../../actions/login';
 
 
@@ -50,7 +50,7 @@ const userMenuConnect = connect((state, props) => ({
     onItemSelected: itemSelected,
     onCheckMapChanges: checkUnsavedMapChanges,
     onCloseUnsavedDialog: setControlProperty.bind(null, "unsavedMap", "enabled", false),
-    onLogoutConfirm: logout.bind(null, undefined)
+    onLogoutConfirm: completeLogout.bind(null, undefined)
 }, (stateProps = {}, dispatchProps = {}, ownProps = {}) => {
     const {currentProvider, providers = []} = stateProps;
     const {type, showAccountInfo = false, showPasswordChange = false} =

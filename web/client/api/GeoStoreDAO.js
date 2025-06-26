@@ -17,6 +17,9 @@ import ConfigUtils from '../utils/ConfigUtils';
 import { registerErrorParser } from '../utils/LocaleUtils';
 import { encodeUTF8 } from '../utils/EncodeUtils';
 
+// Import Keycloak utilities for enhanced authentication
+import { KeycloakSecurityUtils } from '../utils/KeycloakSecurityUtils';
+import { KeycloakErrorUtils } from '../utils/KeycloakErrorUtils';
 
 const generateMetadata = (name = "", description = "", advertised = true) =>
     "<description><![CDATA[" + description + "]]></description>"
@@ -91,11 +94,72 @@ const Api = {
     /**
      * add the geostore base url, default is /mapstore/rest/geostore/
      * @param {object} options axios options
-     * @return {object} options with baseURL
+     * @return {object} options with baseURL and authentication headers
      */
     addBaseUrl: function(options) {
-        return assign({}, options, {baseURL: options && options.baseURL || ConfigUtils.getDefaults().geoStoreUrl});
+        const baseOptions = assign({}, options, {baseURL: options && options.baseURL || ConfigUtils.getDefaults().geoStoreUrl});
+        
+        // Add Keycloak authentication headers if user is authenticated via Keycloak
+        try {
+            if (KeycloakSecurityUtils.isKeycloakUser()) {
+                const authHeaders = KeycloakSecurityUtils.getAuthHeaders();
+                if (authHeaders && Object.keys(authHeaders).length > 0) {
+                    baseOptions.headers = assign({}, baseOptions.headers, authHeaders);
+                    console.log('Added Keycloak auth headers to GeoStore request');
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to add Keycloak auth headers:', error);
+        }
+        
+        return baseOptions;
     },
+    
+    /**
+     * Enhanced request method that handles Keycloak token refresh automatically
+     * @param {function} requestFunction the axios request function to execute
+     * @param {array} args arguments to pass to the request function
+     * @returns {Promise} the request promise with automatic token refresh handling
+     */
+    executeWithKeycloakAuth: async function(requestFunction, ...args) {
+        try {
+            // First attempt: try the request with current token
+            return await requestFunction.apply(this, args);
+        } catch (error) {
+            // If authentication error and user is Keycloak user, try to refresh token
+            if ((error.status === 401 || error.status === 403) && KeycloakSecurityUtils.isKeycloakUser()) {
+                console.log('Authentication error detected, attempting token refresh...');
+                try {
+                    // Refresh the Keycloak token
+                    await KeycloakSecurityUtils.refreshToken();
+                    console.log('Token refreshed successfully, retrying request...');
+                    
+                    // Retry the request with the new token
+                    return await requestFunction.apply(this, args);
+                } catch (refreshError) {
+                    KeycloakErrorUtils.logError(refreshError, 'Token Refresh');
+                    
+                    // Use smart error classification to determine if logout is needed
+                    if (KeycloakErrorUtils.shouldLogout(refreshError)) {
+                        console.warn('Session truly expired, logging out user');
+                        const { logout } = require('../actions/security');
+                        const { getStore } = require('../utils/StateUtils');
+                        const store = getStore();
+                        if (store) {
+                            store.dispatch(logout(KeycloakErrorUtils.getUserFriendlyMessage(refreshError)));
+                        }
+                    } else {
+                        console.warn('Token refresh failed but session may still be valid, not logging out');
+                    }
+                    
+                    throw error; // Re-throw the original error
+                }
+            }
+            // Re-throw the error if it's not an auth error or not a Keycloak user
+            throw error;
+        }
+    },
+    
     getData: function(id, options) {
         const url = "data/" + id;
         return axios.get(url, this.addBaseUrl(parseOptions(options))).then(function(response) {
@@ -225,7 +289,7 @@ const Api = {
             }, options)));
     },
     updateResourceAttribute: function(resourceId, name, value, type, options) {
-        return axios.put(
+        const requestFunction = () => axios.put(
             "resources/resource/" + resourceId + "/attributes/", {
                 "restAttribute": {
                     name,
@@ -237,6 +301,13 @@ const Api = {
                     'Content-Type': "application/json"
                 }
             }, options)));
+        
+        // Use enhanced authentication handling for Keycloak users
+        if (KeycloakSecurityUtils.isKeycloakUser()) {
+            return this.executeWithKeycloakAuth(requestFunction);
+        }
+        
+        return requestFunction();
     },
     getResourceAttribute: function(resourceId, name, options = {}) {
         return axios.get(
@@ -268,7 +339,7 @@ const Api = {
             .then(rules => (rules && rules[0] && rules[0] !== "") ? rules : []);
     },
     putResourceMetadata: function(resourceId, newName, newDescription, advertised, options) {
-        return axios.put(
+        const requestFunction = () => axios.put(
             "resources/resource/" + resourceId,
             "<Resource>" + generateMetadata(newName, newDescription, advertised) + "</Resource>",
             this.addBaseUrl(merge({
@@ -276,6 +347,13 @@ const Api = {
                     'Content-Type': "application/xml"
                 }
             }, options)));
+        
+        // Use enhanced authentication handling for Keycloak users
+        if (KeycloakSecurityUtils.isKeycloakUser()) {
+            return this.executeWithKeycloakAuth(requestFunction);
+        }
+        
+        return requestFunction();
     },
     putResourceMetadataAndAttributes: function(resourceId, metadata, options) {
         return axios.put(
@@ -288,7 +366,7 @@ const Api = {
             }, options)));
     },
     putResource: function(resourceId, content, options) {
-        return axios.put(
+        const requestFunction = () => axios.put(
             "data/" + resourceId,
             content,
             this.addBaseUrl(merge({
@@ -296,6 +374,13 @@ const Api = {
                     'Content-Type': typeof content === 'string' ? "text/plain; charset=utf-8" : 'application/json; charset=utf-8'
                 }
             }, options)));
+        
+        // Use enhanced authentication handling for Keycloak users
+        if (KeycloakSecurityUtils.isKeycloakUser()) {
+            return this.executeWithKeycloakAuth(requestFunction);
+        }
+        
+        return requestFunction();
     },
     writeSecurityRules: function(SecurityRuleList = {}) {
         return "<SecurityRuleList>" +
@@ -336,7 +421,8 @@ const Api = {
         const description = metadata.description || "";
         // filter attributes from the metadata object excluding the default ones
         const attributesSection = createAttributeList(metadata);
-        return axios.post(
+        
+        const requestFunction = () => axios.post(
             "resources/",
             "<Resource>" + generateMetadata(name, description, metadata.advertised) + "<category><name>" + (category || "") + "</name></category>" +
                 attributesSection +
@@ -352,12 +438,26 @@ const Api = {
                     'Content-Type': "application/xml"
                 }
             }, options)));
+        
+        // Use enhanced authentication handling for Keycloak users
+        if (KeycloakSecurityUtils.isKeycloakUser()) {
+            return this.executeWithKeycloakAuth(requestFunction);
+        }
+        
+        return requestFunction();
     },
     deleteResource: function(resourceId, options) {
-        return axios.delete(
+        const requestFunction = () => axios.delete(
             "resources/resource/" + resourceId,
             this.addBaseUrl(merge({
             }, options)));
+        
+        // Use enhanced authentication handling for Keycloak users
+        if (KeycloakSecurityUtils.isKeycloakUser()) {
+            return this.executeWithKeycloakAuth(requestFunction);
+        }
+        
+        return requestFunction();
     },
     getUserGroups: function(options) {
         const url = "usergroups/";

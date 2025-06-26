@@ -55,6 +55,9 @@ class Selector extends React.Component {
     };
     static defaultProps = {
         availableCRS: getAvailableCRS(),
+        filterAllowedCRS: [],
+        projectionDefs: [],
+        additionalCRS: {},
         setCrs: ()=> {},
         typeInput: () => {},
         enabled: true,
@@ -69,7 +72,7 @@ class Selector extends React.Component {
 
         let list = [];
         let availableCRS = {};
-        if (Object.keys(this.props.availableCRS).length) {
+        if (this.props.availableCRS && Object.keys(this.props.availableCRS).length) {
             availableCRS = filterCRSList(this.props.availableCRS, this.props.filterAllowedCRS, this.props.additionalCRS, this.props.projectionDefs );
         }
         for (let crs in availableCRS) {

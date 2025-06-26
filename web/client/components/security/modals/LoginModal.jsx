@@ -10,6 +10,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import LoginForm from '../forms/LoginForm';
+import KeycloakDirectLogin from '../forms/KeycloakDirectLogin';
 import Modal from '../../misc/Modal';
 import Message from '../../I18N/Message';
 import { getMessageById } from '../../../utils/LocaleUtils';
@@ -58,7 +59,8 @@ class LoginModal extends React.Component {
     };
 
     static contextTypes = {
-        messages: PropTypes.object
+        messages: PropTypes.object,
+        store: PropTypes.object
     };
 
     static defaultProps = {
@@ -72,10 +74,26 @@ class LoginModal extends React.Component {
         closeGlyph: "",
         style: {},
         buttonSize: "large",
-        includeCloseButton: true
+        includeCloseButton: true,
+        useKeycloakDirect: true // Enable direct Keycloak login
     };
 
     getForm = () => {
+        // Use direct Keycloak login if enabled
+        if (this.props.useKeycloakDirect) {
+            return (<KeycloakDirectLogin
+                ref="keycloakLogin"
+                onLoginSuccess={this.handleKeycloakSuccess}
+                onError={this.props.onError}
+                keycloakConfig={{
+                    authServerUrl: 'https://gisidgw.geosystems-me.com:5443/',
+                    realm: 'GISID',
+                    clientId: 'mapstore-client',
+                    clientSecret: 'hy7rf5rEiDRHreQAlt6zMsizLnvK65Ih'
+                }}
+            />);
+        }
+        
         const formProviders = this.props.providers.filter(({type}) => type === "basic");
         if (formProviders.length > 0) {
             return (<LoginForm
@@ -113,14 +131,14 @@ class LoginModal extends React.Component {
                 key="closeButton"
                 ref="closeButton"
                 onClick={this.handleOnHide}><Message msgId="close"/></Button> : <span/>}
-            <Button
+            {!this.props.useKeycloakDirect && <Button
                 ref="submit"
                 value={getMessageById(this.context.messages, "user.signIn")}
                 variant="success"
                 onClick={this.loginSubmit}
                 key="submit">
                 <Message msgId="user.signIn"/>
-            </Button>
+            </Button>}
         </FlexBox>);
     };
 
@@ -154,8 +172,57 @@ class LoginModal extends React.Component {
         }
     }
 
+    handleKeycloakSuccess = (result) => {
+        // Store Keycloak tokens in localStorage for session management
+        if (result.tokens) {
+            localStorage.setItem('keycloak_access_token', result.tokens.access_token);
+            localStorage.setItem('keycloak_refresh_token', result.tokens.refresh_token);
+            localStorage.setItem('keycloak_user', JSON.stringify(result.user));
+        }
+        
+        // Dispatch proper Redux action for MapStore login success
+        // We need to import and dispatch the actual loginSuccess action
+        const { loginSuccess } = require('../../../actions/security');
+        
+        // Create user details in the format MapStore expects
+        const userDetails = {
+            User: result.user,
+            access_token: result.tokens?.access_token,
+            refresh_token: result.tokens?.refresh_token,
+            expires: result.tokens?.expires_in,
+            authProvider: 'keycloak-client'
+        };
+        
+        console.log('Dispatching loginSuccess with userDetails:', userDetails);
+        
+        // If we have access to the store context, dispatch directly
+        // Otherwise, trigger a custom event that our epic can handle
+        if (this.context && this.context.store) {
+            this.context.store.dispatch(loginSuccess(userDetails, result.user.name, '', 'keycloak-client'));
+        } else {
+            // Fallback: dispatch custom event for epic handling
+            window.dispatchEvent(new CustomEvent('mapstore-keycloak-login', {
+                detail: {
+                    userDetails,
+                    username: result.user.name,
+                    provider: 'keycloak-client'
+                }
+            }));
+        }
+        
+        // Call original success handler (closes the form)
+        this.props.onLoginSuccess(result.user);
+        this.props.onClose();
+    };
+
     loginSubmit = () => {
-        this.refs.loginForm.submit();
+        if (this.props.useKeycloakDirect && this.refs.keycloakLogin) {
+            // Keycloak login handles submit internally
+            return;
+        }
+        if (this.refs.loginForm) {
+            this.refs.loginForm.submit();
+        }
     };
 }
 

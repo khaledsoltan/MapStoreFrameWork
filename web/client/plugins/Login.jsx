@@ -20,6 +20,7 @@ import  usePluginItems  from '../hooks/usePluginItems';
 import { connect } from 'react-redux';
 import { itemSelected } from '../actions/manager';
 import { isPageConfigured } from '../selectors/plugins';
+import PrivilegeManager from '../utils/PrivilegeManager';
 
 const IMPORTER_ID = 'importer';
 const RULE_MANAGER_ID = 'rulesmanager';
@@ -119,10 +120,24 @@ function LoginPlugin({
         ...configuredItems.filter(({ target }) => target === 'user-menu')
     ].sort((a, b) => a.position - b.position) : [];
 
+    // Enhanced privilege-based filtering for manager items
     const managerItems = authenticated && isAdmin ? [
         ...entries
-            .filter(e => enableRulesManager || e.path !== '/rules-manager')
-            .filter(e => enableImporter || e.path !== '/importer')
+            .filter(e => {
+                // Rules Manager privilege check
+                if (e.path === '/rules-manager') {
+                    return enableRulesManager && PrivilegeManager.canAccessRulesManager();
+                }
+                // Importer privilege check
+                if (e.path === '/importer') {
+                    return enableImporter && PrivilegeManager.canAccessImporter();
+                }
+                // User Manager privilege check
+                if (e.path === '/manager/usermanager') {
+                    return PrivilegeManager.canManageUsers();
+                }
+                return true;
+            })
             .map(e => ({...e, onClick: () => onItemSelected(e.id)})),
         ...configuredItems.filter(({ target }) => target === 'manager-menu')
     ].sort((a, b) => a.position - b.position) : [];
