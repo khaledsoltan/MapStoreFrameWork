@@ -392,7 +392,6 @@
         }
       },
       "Home",
-      { "name": "Routing" },
       {
         "name": "TOC",
         "cfg": {
@@ -474,21 +473,6 @@
           "containerPosition": "header"
         }
       },
-      "nearby",
-      {
-      "name": "nearby",
-      "cfg": {"prop1": "value1"}
-      },
-      "SampleAbout",
-      {
-      "name": "SampleAbout",
-      "cfg": {"prop1": "SampleAbout"}
-      }, "Playground",
-      {
-      "name": "Playground",
-      "cfg": {"prop1": "Playground"}
-      },
-
       { "name": "SecurityPopup" },
       {
         "name": "Map",
@@ -561,7 +545,6 @@
       "Home",
       "FeatureEditor",
       "LayerDownload",
-      { "name": "Routing" },
       {
         "name": "QueryPanel",
         "cfg": {
@@ -624,6 +607,11 @@
       "MapImport",
       {
         "name": "MapExport"
+      },
+      "Playground",
+      {
+      "name": "Playground",
+      "cfg": {"prop1": "Playground"}
       },
       {
         "name": "Settings",
@@ -893,10 +881,11 @@
     "maps": [
       { "name": "HomeDescription" },
       { "name": "ResourcesSearch" },
-      {
-        "name": "ResourcesGrid",
-        "cfg": {
+              {
+          "name": "ResourcesGrid",
           "id": "featured",
+          "cfg": {
+            "id": "featured",
           "titleId": "manager.featuredMaps",
           "pageSize": 4,
           "cardLayoutStyle": "grid",
@@ -907,16 +896,16 @@
           }
         }
       },
-      {
-        "name": "ResourcesGrid",
-        "cfg": {
+              {
+          "name": "ResourcesGrid",
           "id": "catalog",
+          "cfg": {
+            "id": "catalog",
           "titleId": "resources.contents.title",
           "queryPage": true,
           "menuItems": [
             {
               "labelId": "resourcesCatalog.addResource",
-              "disableIf": "{!state('userrole')}",
               "type": "dropdown",
               "variant": "primary",
               "size": "sm",
@@ -1312,5 +1301,8 @@
       "Footer",
       { "name": "About" }
     ]
+  },
+  "miscSettings": {
+    "homePath": "/maps"
   }
 }

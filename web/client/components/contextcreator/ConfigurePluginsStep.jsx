@@ -128,7 +128,7 @@ const pluginsToItems = ({
         const isMandatory = plugin.forcedMandatory || plugin.mandatory;
         return {
             id: plugin.name,
-            title: plugin.title || plugin.label || plugin.name,
+            title: String(plugin.title || plugin.label || plugin.name || 'Unknown Plugin'),
             cardSize: 'sm',
             description: plugin.description || 'plugin name: ' + plugin.name,
             showDescriptionTooltip,
@@ -429,14 +429,14 @@ const configurePluginsStep = ({
                     }
 
                     const recursiveSort = curItems => curItems && curItems.map(item => ({...item, children: recursiveSort(item.children)}))
-                        .sort((x, y) => x.title < y.title ? -1 : 1);
+                        .sort((x, y) => String(x.title || '') < String(y.title || '') ? -1 : 1);
                     return recursiveSort(items);
                 }}
                 filter={(text, items) => {
                     const loweredText = text.toLowerCase();
                     const recursiveFilter = (curItems = []) =>
                         curItems.map(item => ({...item, children: recursiveFilter(item.children)}))
-                            .filter(item => item.children.length > 0 || item.title.toLowerCase().indexOf(loweredText) > -1);
+                            .filter(item => item.children.length > 0 || String(item.title || '').toLowerCase().indexOf(loweredText) > -1);
                     return recursiveFilter(items);
                 }}
                 onSelect={items => setSelectedPlugins(pickIds(ignoreMandatory(items)))}

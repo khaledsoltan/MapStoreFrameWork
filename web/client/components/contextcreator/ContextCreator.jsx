@@ -257,7 +257,7 @@ export default class ContextCreator extends React.Component {
         allAvailablePlugins: [],
         isCfgValidated: false,
         curStepId: 'general-settings',
-        saveDestLocation: '/',
+        saveDestLocation: '/maps',
         onInit: () => { },
         onSetStep: () => { },
         onShowTutorial: () => { },

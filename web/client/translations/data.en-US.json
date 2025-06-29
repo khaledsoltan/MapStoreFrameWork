@@ -849,11 +849,13 @@
     },
     "measureComponent": {
       "Measure": "Measure",
+  
       "MeasureLength": "Measure distance",
       "MeasureArea": "Measure area",
       "MeasureBearing": "Measure bearing",
       "MeasureTrueBearing": "Measure true bearing",
       "tooltip": "Measure length, area and bearing",
+  
       "title": "Measure",
       "lengthButtonText": "Line",
       "areaButtonText": "Area",
@@ -3411,6 +3413,7 @@
         "description": "Allows to measure distances and areas on the map",
         "title": "Measure"
       },
+
       "MetadataExplorer": {
         "description": "Browse services (WMS/WMTS/CSW) to add layers to the map",
         "title": "Catalog"
@@ -3419,6 +3422,7 @@
         "description": "Shows the coordinates of the pointed by the mouse cursor",
         "title": "Mouse Position"
       },
+
       "Print": {
         "description": "Allows to print the current map with legend",
         "title": "Print Tool"

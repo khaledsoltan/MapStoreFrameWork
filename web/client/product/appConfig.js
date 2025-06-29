@@ -8,10 +8,11 @@
 
 export default {
     pages: [{
-        name: "home",
+        name: "login",
         path: "/",
-        component: require('./pages/Maps').default
-    }, {
+        component: require('./pages/LoginPage').default
+    },
+     {
         name: "maps",
         path: "/maps",
         component: require('./pages/Maps').default
@@ -95,6 +96,17 @@ export default {
         path: "/permalink/:pid",
         component: require('./pages/Permalink').default
     }],
+    pluginsConfig: {
+        desktop: [{
+            name: "BrandNavbar",
+            cfg: {
+                src: "product/assets/img/Geo_Site_PRE_01-08.png",
+                height: 40,
+                title: "GeoSite SADAIA",
+                alt: "GeoSite SADAIA Logo"
+            }
+        }]
+    },
     initialState: {
         defaultState: {
             mousePosition: {enabled: false},

@@ -29,17 +29,9 @@
         }
       }
     },
-      {
-      "name": "nearby",
-      "cfg": {"prop1": "value1"}
-      }
-    ,{
-      "name": "SampleAbout",
-      "cfg": {"prop1": "SampleAbout"}
-      }
-    ,{
+    {
       "name": "Playground",
-      "cfg": {"prop1": "Playground"}
+      "cfg": {"prop1": "12"}
       }
     ,
     {
@@ -589,13 +581,6 @@
       "name": "Language",
       "title": "plugins.Language.title",
       "description": "plugins.Language.description"
-    },
-    {
-      "name": "Routing",
-      "glyph": "road",
-      "title": "plugins.Routing.title",
-      "description": "plugins.Routing.description",
-      "dependencies": ["SidebarMenu", "Toolbar"]
     }
   ]
 }

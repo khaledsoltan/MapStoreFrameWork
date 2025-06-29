@@ -8,7 +8,6 @@
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 
-import GlobalSpinner from '../components/misc/spinners/GlobalSpinner/GlobalSpinner';
 import Main from './longitudinalProfile/Main';
 import MenuConnected from './longitudinalProfile/Menu';
 import MenuForBurger from './longitudinalProfile/MenuForBurger';
@@ -211,14 +210,6 @@ export default createPlugin(
                 position: 2100,
                 doNotHide: true,
                 priority: 2
-            },
-            Toolbar: {
-                name: "LongitudinalProfileTool-spinner",
-                alwaysVisible: true,
-                position: 1,
-                tool: connect((state) => ({
-                    loading: isLoadingSelector(state)
-                }))(GlobalSpinner)
             }
         },
         reducers: { longitudinalProfile },

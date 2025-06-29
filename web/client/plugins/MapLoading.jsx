@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2016, GeoSolutions Sas.
  * All rights reserved.
@@ -10,17 +9,28 @@
 import './maploading/maploading.css';
 
 import assign from 'object-assign';
+import React from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 
-import GlobalSpinner from '../components/misc/spinners/GlobalSpinner/GlobalSpinner';
 import { layersSelector } from '../selectors/layers';
+
+const SimpleSpinner = ({ loading }) => {
+    if (!loading) return null;
+    return (
+        <div className="map-loading-spinner">
+            <div className="spinner-border" role="status">
+                <span className="sr-only">Loading...</span>
+            </div>
+        </div>
+    );
+};
 
 const selector = createSelector([layersSelector], (layers) => ({
     loading: layers && layers.some((layer) => layer.loading)
 }));
 
-const MapLoadingPlugin = connect(selector)(GlobalSpinner);
+const MapLoadingPlugin = connect(selector)(SimpleSpinner);
 
 /**
  * Loading spinner rendered in the {@link #plugins.Toolbar|Toolbar}
